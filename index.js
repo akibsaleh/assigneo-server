@@ -1,9 +1,19 @@
 require('dotenv').config();
 const express = require('express');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.get('/', (req, res) => {
+app.use(cors());
+app.use(cookieParser());
+
+const logger = (req, res, next) => {
+  console.log('Custom MiddleWare logged');
+  next();
+};
+
+app.get('/', logger, (req, res) => {
   res.send('Hello World!');
 });
 
