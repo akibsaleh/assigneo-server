@@ -2,9 +2,25 @@ require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || 5000;
+
+const admin = require('firebase-admin');
+const serviceAccount = require('./general-authentication-f7699-firebase-adminsdk-tw7ov-42be31b655.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: 'gs://general-authentication-f7699.appspot.com',
+});
+
+// Set up the Firebase Storage Bucket
+const bucket = admin.storage().bucket();
+
+// Set up multer for handling file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 app.use(
   cors({
@@ -58,6 +74,12 @@ async function run() {
       const user = await req.body;
       console.log('got api call from client side', user);
       res.clearCookie('token', { maxAge: 0 }).send(user);
+    });
+
+    app.post('/assignment', async (req, res) => {
+      const assignment = await req.body;
+      console.log(assignment);
+      res.send(assignment);
     });
 
     // await client.connect();
