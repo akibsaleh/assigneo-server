@@ -25,7 +25,7 @@ const upload = multer({ storage: storage });
 
 app.use(
   cors({
-    origin: 'http://localhost:5173',
+    origin: ['http://localhost:5173', 'https://assigneo-akib-saleh.web.app'],
     credentials: true,
   })
 );
@@ -59,6 +59,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    const assignmentCollection = client.db('assigneo').collection('assignments');
+
     app.post('/jwt', async (req, res) => {
       const user = await req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
@@ -104,7 +106,10 @@ async function run() {
 
         const assignmentData = { ...assignment, uploadedThumb: thumbUrl };
 
-        return res.status(200).send(assignmentData);
+        const result = assignmentCollection.insertOne(assignmentData);
+        if (result) {
+          return res.status(200).send(result);
+        }
       });
 
       blobStream.end(file.buffer);
