@@ -60,6 +60,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const assignmentCollection = client.db('assigneo').collection('assignments');
+    const submissionCollection = client.db('assigneo').collection('submissions');
 
     app.post('/jwt', async (req, res) => {
       const user = await req.body;
@@ -137,8 +138,21 @@ async function run() {
 
     app.post('/submissions', async (req, res) => {
       const submission = await req.body;
-      const result = await assignmentCollection.insertOne(submission);
+      const result = await submissionCollection.insertOne(submission);
       if (result) res.send(result);
+    });
+
+    app.get('/submissions', async (req, res) => {
+      const cursor = submissionCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get('/submission/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await submissionCollection.findOne(query);
+      res.send(result);
     });
 
     // await client.connect();
