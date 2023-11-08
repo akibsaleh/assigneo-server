@@ -45,7 +45,7 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hfh6rjb.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -83,36 +83,62 @@ async function run() {
       const assignment = await req.body;
       const file = req.file;
 
-      const metadata = {
-        metadata: {
-          firebaseStorageDownloadTokens: uuidv4(),
-        },
-        contentType: file.mimetype,
-        cacheControl: 'public, max-age=31536000',
-      };
+      if (file) {
+        const metadata = {
+          metadata: {
+            firebaseStorageDownloadTokens: uuidv4(),
+          },
+          contentType: file.mimetype,
+          cacheControl: 'public, max-age=31536000',
+        };
 
-      const blob = bucket.file(file.originalname);
-      const blobStream = blob.createWriteStream({
-        metadata: metadata,
-        gzip: true,
-      });
+        const blob = bucket.file(file.originalname);
+        const blobStream = blob.createWriteStream({
+          metadata: metadata,
+          gzip: true,
+        });
 
-      blobStream.on('error', (err) => {
-        return res.status(500).send(err);
-      });
+        blobStream.on('error', (err) => {
+          return res.status(500).send(err);
+        });
 
-      blobStream.on('finish', () => {
-        const thumbUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(blob.name)}?alt=media&token=${metadata.metadata.firebaseStorageDownloadTokens}`;
+        blobStream.on('finish', async () => {
+          const thumbUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(blob.name)}?alt=media&token=${metadata.metadata.firebaseStorageDownloadTokens}`;
 
-        const assignmentData = { ...assignment, uploadedThumb: thumbUrl };
+          const assignmentData = { ...assignment, uploadedThumb: thumbUrl };
 
-        const result = assignmentCollection.insertOne(assignmentData);
+          const result = await assignmentCollection.insertOne(assignmentData);
+          if (result) {
+            return res.status(200).send(result);
+          }
+        });
+
+        blobStream.end(file.buffer);
+      } else {
+        const result = await assignmentCollection.insertOne(assignment);
         if (result) {
           return res.status(200).send(result);
         }
-      });
+      }
+    });
 
-      blobStream.end(file.buffer);
+    app.get('/all-assignment', async (req, res) => {
+      const cursor = assignmentCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get('/assignment/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await assignmentCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post('/submissions', async (req, res) => {
+      const submission = await req.body;
+      const result = await assignmentCollection.insertOne(submission);
+      if (result) res.send(result);
     });
 
     // await client.connect();
