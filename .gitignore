@@ -2,3 +2,4 @@ node_modules
 .env
 env
 general-authentication-f7699-firebase-adminsdk-tw7ov-42be31b655.json
+.vercel

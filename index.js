@@ -7,6 +7,7 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || 5000;
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const admin = require('firebase-admin');
 const serviceAccount = require('./general-authentication-f7699-firebase-adminsdk-tw7ov-42be31b655.json');
@@ -25,7 +26,7 @@ const upload = multer({ storage: storage });
 
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'https://assigneo-akib-saleh.web.app'],
+    origin: ['http://localhost:5173', 'https://assigneo-akib-saleh.web.app', 'https://assigneo-akib-saleh.firebaseapp.com/'],
     credentials: true,
   })
 );
@@ -45,7 +46,6 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hfh6rjb.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -143,7 +143,8 @@ async function run() {
     });
 
     app.get('/submissions', async (req, res) => {
-      const cursor = submissionCollection.find();
+      const query = { status: 'pending' };
+      const cursor = submissionCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -155,10 +156,25 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/submission/:id', async (req, res) => {
+      const id = req.params.id;
+      const submission = await req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: submission.status,
+          feedback: submission.feedback,
+          result_marks: submission.result_marks,
+        },
+      };
+      const result = await submissionCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
     // await client.connect();
 
-    // await client.db('admin').command({ ping: 1 });
-    // console.log('Pinged your deployment. You successfully connected to MongoDB!');
+    await client.db('admin').command({ ping: 1 });
+    console.log('Pinged your deployment. You successfully connected to MongoDB!');
   } finally {
     // await client.close();
   }
