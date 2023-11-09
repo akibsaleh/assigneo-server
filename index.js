@@ -70,6 +70,7 @@ async function run() {
           httpOnly: true,
           secure: true,
           sameSite: 'none',
+          maxAge: 60 * 60 * 1000,
         })
         .send({ success: true });
     });
@@ -77,7 +78,7 @@ async function run() {
     app.post('/logout', async (req, res) => {
       const user = await req.body;
       console.log('got api call from client side', user);
-      res.clearCookie('token', { maxAge: 0 }).send(user);
+      res.clearCookie('token', { maxAge: 0, secure: true, sameSite: 'none' }).send(user);
     });
 
     app.post('/assignment', upload.single('thumb'), async (req, res) => {
@@ -124,9 +125,21 @@ async function run() {
     });
 
     app.get('/all-assignment', async (req, res) => {
-      const cursor = assignmentCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
+      const urlQuery = req.query.difficulty;
+
+      if (urlQuery === 'all') {
+        const cursor = assignmentCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+      } else if (urlQuery === 'Easy' || urlQuery === 'Medium' || urlQuery === 'Hard') {
+        const query = { difficulty: urlQuery };
+        const cursor = assignmentCollection.find(query);
+        const result = await cursor.toArray();
+        res.send(result);
+      } else {
+        // Handle invalid difficulty values
+        res.status(400).send('Invalid difficulty value');
+      }
     });
 
     app.get('/assignment/:id', async (req, res) => {
