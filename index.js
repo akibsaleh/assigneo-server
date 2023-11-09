@@ -184,6 +184,70 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/assignment/:id', async (req, res) => {
+      const id = req.params.id;
+      const assignment = await req.body;
+      const file = req.file;
+
+      console.log(file);
+
+      if (file) {
+        const metadata = {
+          metadata: {
+            firebaseStorageDownloadTokens: uuidv4(),
+          },
+          contentType: file.mimetype,
+          cacheControl: 'public, max-age=31536000',
+        };
+
+        const blob = bucket.file(file.originalname);
+        const blobStream = blob.createWriteStream({
+          metadata: metadata,
+          gzip: true,
+        });
+
+        blobStream.on('error', (err) => {
+          return res.status(500).send(err);
+        });
+
+        blobStream.on('finish', async () => {
+          const thumbUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(blob.name)}?alt=media&token=${metadata.metadata.firebaseStorageDownloadTokens}`;
+
+          const query = { _id: new ObjectId(id) };
+          const updateDoc = {
+            $set: {
+              date: assignment.date,
+              description: assignment.description,
+              difficulty: assignment.difficulty,
+              thumbnailUrl: assignment.thumbnailUrl,
+              title: assignment.title,
+              uploadedThumb: thumbUrl,
+              marks: assignment.marks,
+            },
+          };
+          // const result = await assignmentCollection.updateOne(query, updateDoc);
+          res.send(JSON.stringify(updateDoc));
+        });
+
+        blobStream.end(file.buffer);
+      } else {
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            date: assignment.date,
+            description: assignment.description,
+            difficulty: assignment.difficulty,
+            thumbnailUrl: assignment.thumbnailUrl,
+            title: assignment.title,
+            uploadedThumb: assignment.uploadedThumb,
+            marks: assignment.marks,
+          },
+        };
+        const result = await assignmentCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    });
+
     // await client.connect();
 
     await client.db('admin').command({ ping: 1 });
