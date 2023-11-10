@@ -184,14 +184,28 @@ async function run() {
       res.send(result);
     });
 
-    app.patch('/assignment/:id', async (req, res) => {
+    app.patch('/assignment/:id', upload.single('thumb'), async (req, res) => {
       const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
       const assignment = await req.body;
-      const file = req.file;
+      const file = req?.file;
 
-      console.log(file);
+      if (!Boolean(file)) {
+        const updateDoc = {
+          $set: {
+            date: assignment.date,
+            description: assignment.description,
+            difficulty: assignment.difficulty,
+            thumbnailUrl: assignment.thumbnailUrl,
+            title: assignment.title,
+            marks: assignment.marks,
+          },
+        };
+        const result = await assignmentCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
 
-      if (file) {
+      if (Boolean(file)) {
         const metadata = {
           metadata: {
             firebaseStorageDownloadTokens: uuidv4(),
@@ -213,7 +227,6 @@ async function run() {
         blobStream.on('finish', async () => {
           const thumbUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(blob.name)}?alt=media&token=${metadata.metadata.firebaseStorageDownloadTokens}`;
 
-          const query = { _id: new ObjectId(id) };
           const updateDoc = {
             $set: {
               date: assignment.date,
@@ -225,26 +238,59 @@ async function run() {
               marks: assignment.marks,
             },
           };
-          // const result = await assignmentCollection.updateOne(query, updateDoc);
-          res.send(JSON.stringify(updateDoc));
+          const result = await assignmentCollection.updateOne(query, updateDoc);
+          res.send(result);
         });
 
         blobStream.end(file.buffer);
-      } else {
-        const query = { _id: new ObjectId(id) };
-        const updateDoc = {
-          $set: {
-            date: assignment.date,
-            description: assignment.description,
-            difficulty: assignment.difficulty,
-            thumbnailUrl: assignment.thumbnailUrl,
-            title: assignment.title,
-            uploadedThumb: assignment.uploadedThumb,
-            marks: assignment.marks,
-          },
-        };
-        const result = await assignmentCollection.updateOne(query, updateDoc);
-        res.send(result);
+
+        // const assignmentObj = {};
+        // if (assignment) {
+        //   for (const [key, value] of assignment.entries()) {
+        //     assignmentObj[key] = value;
+        //   }
+        //   res.send(assignmentObj);
+        // }
+
+        // if (file) {
+        //   const metadata = {
+        //     metadata: {
+        //       firebaseStorageDownloadTokens: uuidv4(),
+        //     },
+        //     contentType: file.mimetype,
+        //     cacheControl: 'public, max-age=31536000',
+        //   };
+
+        //   const blob = bucket.file(file.originalname);
+        //   const blobStream = blob.createWriteStream({
+        //     metadata: metadata,
+        //     gzip: true,
+        //   });
+
+        //   blobStream.on('error', (err) => {
+        //     return res.status(500).send(err);
+        //   });
+
+        //   blobStream.on('finish', async () => {
+        //     const thumbUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(blob.name)}?alt=media&token=${metadata.metadata.firebaseStorageDownloadTokens}`;
+
+        //     const updateDoc = {
+        //       $set: {
+        //         date: assignment.date,
+        //         description: assignment.description,
+        //         difficulty: assignment.difficulty,
+        //         thumbnailUrl: assignment.thumbnailUrl,
+        //         title: assignment.title,
+        //         uploadedThumb: thumbUrl,
+        //         marks: assignment.marks,
+        //       },
+        //     };
+        //     // const result = await assignmentCollection.updateOne(query, updateDoc);
+        //     res.send(JSON.stringify(updateDoc));
+        //   });
+
+        //   blobStream.end(file.buffer);
+        // }
       }
     });
 
