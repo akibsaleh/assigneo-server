@@ -84,6 +84,7 @@ async function run() {
     app.post('/assignment', upload.single('thumb'), async (req, res) => {
       const assignment = await req.body;
       const file = req.file;
+      const options = { upsert: true };
 
       if (file) {
         const metadata = {
@@ -187,6 +188,7 @@ async function run() {
     app.patch('/assignment/:id', upload.single('thumb'), async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
       const assignment = await req.body;
       const file = req?.file;
 
@@ -201,7 +203,7 @@ async function run() {
             marks: assignment.marks,
           },
         };
-        const result = await assignmentCollection.updateOne(query, updateDoc);
+        const result = await assignmentCollection.updateOne(query, updateDoc, options);
         res.send(result);
       }
 
@@ -238,7 +240,7 @@ async function run() {
               marks: assignment.marks,
             },
           };
-          const result = await assignmentCollection.updateOne(query, updateDoc);
+          const result = await assignmentCollection.updateOne(query, updateDoc, options);
           res.send(result);
         });
 
