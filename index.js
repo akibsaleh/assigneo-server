@@ -38,9 +38,8 @@ const logger = (req, res, next) => {
   next();
 };
 
-const verifyToken = (req, res, next) => {
-  const token = req.cookies?.token;
-  console.log('Token value is: ', token);
+const verifyToken = async (req, res, next) => {
+  const token = await req.cookies?.token;
   if (!token) {
     return res.status(401).send({ message: 'Unauthorized Access' });
   }
@@ -159,8 +158,11 @@ async function run() {
 
     app.get('/my-assignment', verifyToken, async (req, res) => {
       const urlQuery = req.query.email;
-      const query = { publisher_email: urlQuery };
-      const result = await assignmentCollection.find(query).toArray();
+      if (urlQuery !== req.decoded?.email) {
+        return res.status(400).send({ message: 'Bad Request' });
+      }
+      const query = { email: urlQuery };
+      const result = await submissionCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -314,6 +316,25 @@ async function run() {
 
         //   blobStream.end(file.buffer);
         // }
+      }
+    });
+
+    app.delete('/rm-assignment/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const email = req.query.email;
+      console.log(email);
+      console.log(req.decoded?.email);
+      try {
+        if (email === req.decoded?.email) {
+          const query = { _id: new ObjectId(id) };
+          const result = await assignmentCollection.deleteOne(query);
+          res.send(result);
+        } else {
+          res.status(400).send({ message: 'You do not have permission' });
+        }
+      } catch (err) {
+        console.log(err);
+        res.status(400).send({ message: 'Bad Request' });
       }
     });
 
