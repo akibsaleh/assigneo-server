@@ -140,20 +140,21 @@ async function run() {
 
     app.get('/all-assignment', async (req, res) => {
       const urlQuery = req.query.difficulty;
-
-      if (urlQuery === 'all') {
-        const cursor = assignmentCollection.find();
-        const result = await cursor.toArray();
-        res.send(result);
-      } else if (urlQuery === 'Easy' || urlQuery === 'Medium' || urlQuery === 'Hard') {
-        const query = { difficulty: urlQuery };
-        const cursor = assignmentCollection.find(query);
-        const result = await cursor.toArray();
-        res.send(result);
-      } else {
-        // Handle invalid difficulty values
-        res.status(400).send('Invalid difficulty value');
+      const page = req.query.page;
+      const size = 9;
+      const startingIndex = (page - 1) * size;
+      const options = {
+        sort: { createdAt: -1 },
+      };
+      let query = {};
+      if (urlQuery) {
+        query = { difficulty: urlQuery };
       }
+      const [totalDoc, result] = await Promise.all([assignmentCollection.countDocuments(query, options), assignmentCollection.find(query, options).skip(startingIndex).limit(size).toArray()]);
+      res.send({
+        total: totalDoc,
+        data: result,
+      });
     });
 
     app.get('/my-assignment', verifyToken, async (req, res) => {
